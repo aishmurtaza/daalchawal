@@ -1,0 +1,101 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tenant {
+  id           String        @id @default(uuid())
+  businessName String
+  slug         String        @unique
+  currency     String        @default("PKR")
+  timezone     String        @default("Asia/Karachi")
+  primaryColor String        @default("#f59e0b") // Customizable brand color
+  logoUrl      String?
+  menuItems    MenuItem[]
+  customers    Customer[]
+  orders       Order[]
+  chats        ChatMessage[]
+  riders       Rider[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model MenuItem {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Float
+  category    String   @default("Main Course")
+  available   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+}
+
+model Customer {
+  id        String        @id @default(uuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  phone     String
+  name      String?
+  address   String?
+  orders    Order[]
+  chats     ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([tenantId, phone])
+}
+
+model Rider {
+  id        String   @id @default(uuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  phone     String
+  lat       Float?   // Live rider latitude
+  lng       Float?   // Live rider longitude
+  status    String   @default("AVAILABLE") // AVAILABLE, BUSY, OFFLINE
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  tenantId     String
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId   String
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  customerName String
+  phone        String
+  address      String
+  items        String[]
+  total        Float
+  status       OrderStatus @default(NEW)
+  riderId      String?
+  rider        Rider?      @relation(fields: [riderId], references: [id])
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  tenantId   String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  role       String   // "user" or "assistant"
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  DELIVERING
+  COMPLETED
+  CANCELLED
+}
