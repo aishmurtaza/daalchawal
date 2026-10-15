@@ -75,6 +75,8 @@ model Order {
   items        String[]
   total        Float
   status       OrderStatus @default(NEW)
+  riderLat    Float?
+  riderLng    Float?
   riderId      String?
   rider        Rider?      @relation(fields: [riderId], references: [id])
   createdAt    DateTime    @default(now())

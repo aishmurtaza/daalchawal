@@ -21,7 +21,8 @@ import {
   Sparkles,
   UtensilsCrossed,
   Volume2,
-  BellRing
+  BellRing,
+  Navigation
 } from "lucide-react";
 
 type OrderStatus = "NEW" | "PREPARING" | "DELIVERING" | "COMPLETED" | "CANCELLED";
@@ -35,6 +36,9 @@ interface Order {
   total: number;
   status: OrderStatus;
   createdAt: string;
+  riderLat?: number | null;
+  riderLng?: number | null;
+  riderLastUpdated?: string | null;
 }
 
 interface Customer {
@@ -69,7 +73,8 @@ interface Tenant {
 export default function AutomationDashboard() {
   const [activeTab, setActiveTab] = useState<"onboarding" | "dashboard" | "customers" | "chats">("dashboard");
 
-  const tenantId = "daal-chaawal";
+  // Fixed to match your database tenant ID seed
+  const tenantId = "daal-chaawal-tenant-id";
   const [origin, setOrigin] = useState("");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -104,8 +109,6 @@ export default function AutomationDashboard() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Play a crisp electronic chime using browser Web Audio API (no external MP3 files needed)
-// Play an actual audio file chime guaranteed to be audible
   const playKitchenChime = () => {
     try {
       const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
@@ -134,7 +137,6 @@ export default function AutomationDashboard() {
           const incomingOrders: Order[] = data.orders;
           const currentNewCount = incomingOrders.filter(o => o.status === "NEW").length;
           
-          // Trigger notification if a new order arrives and sound is enabled
           if (currentNewCount > prevNewCount && prevNewCount !== 0 && soundEnabled) {
             playKitchenChime();
           }
@@ -153,7 +155,7 @@ export default function AutomationDashboard() {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds for instant kitchen notification
+    const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -226,7 +228,6 @@ export default function AutomationDashboard() {
   const completedOrdersCount = orders.filter((o) => o.status === "COMPLETED").length;
 
   const whatsappWebhookUrl = `${origin}/api/webhook/whatsapp/${tenantId}`;
-  const checkoutWebhookUrl = `${origin}/api/webhook/${tenantId}`;
   const storefrontUrl = `${origin}/order/daal-chaawal`;
 
   return (
@@ -243,12 +244,11 @@ export default function AutomationDashboard() {
               Daal Chaawal <span className="text-[10px] uppercase bg-[#E6A15C]/15 text-[#8C4A28] border border-[#E6A15C]/30 px-2 py-0.5 rounded-full font-bold">Kitchen Gadget</span>
             </h1>
             <p className="text-xs text-[#7A6B5D]">
-              {tenant?.businessName || "Daal Chaawal Express"} • Live Audio Chime Active
+              {tenant?.businessName || "Daal Chaawal Express"} | Live Audio Chime Active
             </p>
           </div>
         </div>
 
-        {/* Sound Enable Banner Button */}
         {!soundEnabled ? (
           <button
             onClick={enableSoundAlerts}
@@ -266,9 +266,7 @@ export default function AutomationDashboard() {
           <button
             onClick={() => setActiveTab("onboarding")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "onboarding"
-                ? "bg-[#5C3A21] text-white shadow-md"
-                : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
+              activeTab === "onboarding" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
             }`}
           >
             <Store className="w-4 h-4" /> Setup
@@ -276,9 +274,7 @@ export default function AutomationDashboard() {
           <button
             onClick={() => setActiveTab("dashboard")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "dashboard"
-                ? "bg-[#5C3A21] text-white shadow-md"
-                : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
+              activeTab === "dashboard" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
             }`}
           >
             <LayoutDashboard className="w-4 h-4" /> Kitchen Orders
@@ -291,9 +287,7 @@ export default function AutomationDashboard() {
           <button
             onClick={() => setActiveTab("customers")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "customers"
-                ? "bg-[#5C3A21] text-white shadow-md"
-                : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
+              activeTab === "customers" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
             }`}
           >
             <Users className="w-4 h-4" /> CRM Customers
@@ -301,9 +295,7 @@ export default function AutomationDashboard() {
           <button
             onClick={() => setActiveTab("chats")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "chats"
-                ? "bg-[#5C3A21] text-white shadow-md"
-                : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
+              activeTab === "chats" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
             }`}
           >
             <MessageSquare className="w-4 h-4" /> AI Chat Logs
@@ -330,8 +322,6 @@ export default function AutomationDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* WhatsApp Webhook Card */}
               <div className="bg-white border border-[#E5DFD3] rounded-3xl p-6 shadow-md space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
@@ -352,10 +342,7 @@ export default function AutomationDashboard() {
                   <label className="text-[11px] text-[#7A6B5D] font-semibold block">Webhook Callback URL</label>
                   <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#8C4A28]">
                     <span className="truncate flex-1">{whatsappWebhookUrl}</span>
-                    <button
-                      onClick={() => copyToClipboard(whatsappWebhookUrl, "wa-url")}
-                      className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]"
-                    >
+                    <button onClick={() => copyToClipboard(whatsappWebhookUrl, "wa-url")} className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]">
                       {copiedKey === "wa-url" ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
@@ -365,17 +352,13 @@ export default function AutomationDashboard() {
                   <label className="text-[11px] text-[#7A6B5D] font-semibold block">Verification Token</label>
                   <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#3A2A1D]">
                     <span className="truncate flex-1">daalchaawal_secret</span>
-                    <button
-                      onClick={() => copyToClipboard("daalchaawal_secret", "wa-token")}
-                      className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]"
-                    >
+                    <button onClick={() => copyToClipboard("daalchaawal_secret", "wa-token")} className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]">
                       {copiedKey === "wa-token" ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Storefront Webhook Card */}
               <div className="bg-white border border-[#E5DFD3] rounded-3xl p-6 shadow-md space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2.5">
@@ -396,12 +379,7 @@ export default function AutomationDashboard() {
                   <label className="text-[11px] text-[#7A6B5D] font-semibold block">Customer Direct Ordering URL</label>
                   <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#3A2A1D]">
                     <span className="truncate flex-1">{storefrontUrl}</span>
-                    <a
-                      href="/order/daal-chaawal"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 hover:text-[#8C4A28] text-[#7A6B5D]"
-                    >
+                    <a href="/order/daal-chaawal" target="_blank" rel="noopener noreferrer" className="p-1 hover:text-[#8C4A28] text-[#7A6B5D]">
                       <ExternalLink className="w-4 h-4" />
                     </a>
                   </div>
@@ -418,7 +396,6 @@ export default function AutomationDashboard() {
                   </a>
                 </div>
               </div>
-
             </div>
           </div>
         )}
@@ -465,10 +442,7 @@ export default function AutomationDashboard() {
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {orders.filter((o) => o.status === "NEW").map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#D9534F]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all animate-pulse"
-                    >
+                    <div key={order.id} className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#D9534F]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all animate-pulse">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-bold text-[#3A2A1D] text-sm">{order.customerName}</p>
@@ -534,10 +508,7 @@ export default function AutomationDashboard() {
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {orders.filter((o) => o.status === "PREPARING").map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#E6A15C]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all"
-                    >
+                    <div key={order.id} className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#E6A15C]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-bold text-[#3A2A1D] text-sm">{order.customerName}</p>
@@ -595,10 +566,7 @@ export default function AutomationDashboard() {
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {orders.filter((o) => o.status === "DELIVERING").map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#3B7A9E]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all"
-                    >
+                    <div key={order.id} className="bg-[#FDFBF7] border border-[#E5DFD3] hover:border-[#3B7A9E]/50 rounded-xl p-4 space-y-3 shadow-sm transition-all">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-bold text-[#3A2A1D] text-sm">{order.customerName}</p>
@@ -621,6 +589,25 @@ export default function AutomationDashboard() {
                         <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
                         <span className="truncate">{order.address}</span>
                       </p>
+
+                      {/* Live GPS Track Badge if Rider Location Broadcasted */}
+                      {order.riderLat && order.riderLng ? (
+                        <a
+                          href={`https://maps.google.com/?q=${order.riderLat},${order.riderLng}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center justify-between bg-sky-50 border border-sky-200 text-sky-800 p-2 rounded-lg text-[11px] font-bold hover:bg-sky-100 transition-colors"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Navigation className="w-3.5 h-3.5 text-sky-600 animate-pulse" /> Live Rider GPS Active
+                          </span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      ) : (
+                        <div className="bg-amber-50 border border-amber-200 text-amber-800 p-2 rounded-lg text-[10px] flex items-center gap-1.5 font-medium">
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" /> Waiting for rider GPS broadcast...
+                        </div>
+                      )}
 
                       <div className="pt-2 border-t border-[#EFECE6]">
                         <button
@@ -656,10 +643,7 @@ export default function AutomationDashboard() {
 
                 <div className="space-y-3 flex-1 overflow-y-auto">
                   {orders.filter((o) => o.status === "COMPLETED").map((order) => (
-                    <div
-                      key={order.id}
-                      className="bg-[#FDFBF7] border border-[#E5DFD3] rounded-xl p-4 space-y-2 opacity-90 hover:opacity-100 transition-opacity"
-                    >
+                    <div key={order.id} className="bg-[#FDFBF7] border border-[#E5DFD3] rounded-xl p-4 space-y-2 opacity-90 hover:opacity-100 transition-opacity">
                       <div className="flex justify-between items-start">
                         <div>
                           <p className="font-bold text-[#3A2A1D] text-sm">{order.customerName}</p>
@@ -770,8 +754,6 @@ export default function AutomationDashboard() {
         {/* 4. AI CHAT LOGS TAB */}
         {activeTab === "chats" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Left 2 Cols: Conversational Chat Log */}
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -791,9 +773,7 @@ export default function AutomationDashboard() {
                   <div
                     key={chat.id}
                     className={`p-4 rounded-2xl border text-xs sm:text-sm max-w-xl transition-all ${
-                      chat.role === "user"
-                        ? "bg-[#F9F7F2] border-[#E5DFD3] ml-auto shadow-sm"
-                        : "bg-[#E6A15C]/15 border-[#E6A15C]/30 mr-auto shadow-sm"
+                      chat.role === "user" ? "bg-[#F9F7F2] border-[#E5DFD3] ml-auto shadow-sm" : "bg-[#E6A15C]/15 border-[#E6A15C]/30 mr-auto shadow-sm"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-4 text-[11px] text-[#7A6B5D] mb-1.5">
@@ -823,15 +803,12 @@ export default function AutomationDashboard() {
                   <div className="py-20 text-center space-y-3">
                     <MessageSquare className="w-10 h-10 text-[#A89F91] mx-auto" />
                     <p className="text-xs text-[#7A6B5D] italic">No WhatsApp conversations recorded yet.</p>
-                    <p className="text-[11px] text-[#A89F91]">
-                      Use the simulator panel on the right to send a test message!
-                    </p>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Right Col: Live WhatsApp Agent Simulator */}
+            {/* Simulator Col */}
             <div className="space-y-4">
               <div className="bg-white border border-[#E5DFD3] rounded-2xl p-5 shadow-md space-y-4 sticky top-24">
                 <div className="flex items-center space-x-2 pb-3 border-b border-[#EFECE6]">
@@ -881,18 +858,12 @@ export default function AutomationDashboard() {
                     disabled={simLoading}
                     className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-60"
                   >
-                    {simLoading ? (
-                      "Thinking with Gemini..."
-                    ) : (
-                      <>
-                        <Send className="w-3.5 h-3.5" /> Simulate Incoming WhatsApp
-                      </>
-                    )}
+                    {simLoading ? "Thinking with Gemini..." : <><Send className="w-3.5 h-3.5" /> Simulate Incoming WhatsApp</>}
                   </button>
                 </form>
 
                 {simReply && (
-                  <div className="pt-3 border-t border-[#EFECE6] space-y-1.5 animate-in fade-in">
+                  <div className="pt-3 border-t border-[#EFECE6] space-y-1.5">
                     <span className="text-[10px] uppercase font-bold text-[#8C4A28] flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> AI Generated Reply:
                     </span>
@@ -903,7 +874,6 @@ export default function AutomationDashboard() {
                 )}
               </div>
             </div>
-
           </div>
         )}
 
