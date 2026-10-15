@@ -50,8 +50,8 @@ export default function StorefrontPage() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressText, setAddressText] = useState("");
-  const [lat, setLat] = useState<number | null>(null);
-  const [lng, setLng] = useState<number>(null);
+ const [lat, setLat] = useState<number>(33.6844);
+const [lng, setLng] = useState<number>(73.0479);
 
   const [submitting, setSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
