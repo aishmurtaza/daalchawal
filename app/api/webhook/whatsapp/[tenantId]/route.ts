@@ -188,11 +188,11 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
 
-    // 6. Build dynamic menu context & prompt for Gemini AI
+    // 6. Build dynamic menu context & prompt for Gemini AI (Explicit typing on m: any)
     const menuSummary = tenant.menuItems
       .map(
-        (m) =>
-          `• ${m.name} - ${tenant.currency} ${m.price} [${m.category}]: ${m.description || "Freshly cooked"}`
+        (m: { name: string; price: number; category: string; description: string | null }) =>
+          `• ${m.name}\n${tenant.currency} ${m.price} [${m.category}]: ${m.description || "Freshly cooked"}`
       )
       .join("\n");
 
@@ -238,7 +238,7 @@ Customer said: "${userText}"`;
       if (lower.includes("salam") || lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
         aiReply = `Walaikum Assalam! ${tenant.businessName} mein khushamdeed! Aaj hamare paas taza Special Chicken Daal Chawal (PKR 450), Desi Ghee Daal Fry (PKR 350) aur Karachi Chicken Biryani (PKR 500) tayar hain. Batayen aap ke liye kya pack karwayen?`;
       } else if (lower.includes("price") || lower.includes("rate") || lower.includes("kitn") || lower.includes("menu")) {
-        aiReply = `Hamara taza menu aur prices:\n${tenant.menuItems.map((m) => `• ${m.name}: ${tenant.currency}${m.price}`).join("\n")}\nAap kitni plates order karna chahtay hain?`;
+        aiReply = `Hamara taza menu aur prices:\n${tenant.menuItems.map((m: { name: string; price: number }) => `• ${m.name}: ${tenant.currency}${m.price}`).join("\n")}\nAap kitni plates order karna chahtay hain?`;
       } else if (lower.includes("order") || lower.includes("chahiye") || lower.includes("bhejo") || lower.includes("bhej do") || lower.includes("pack")) {
         aiReply = `Zabardast! Aap ka order note kar rahe hain. Barah-e-karam apna Delivery Address aur contact confirm farma dein taake hum kitchen ko order forward karein.`;
       } else {
