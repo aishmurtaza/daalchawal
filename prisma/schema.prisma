@@ -12,7 +12,7 @@ model Tenant {
   slug         String        @unique
   currency     String        @default("PKR")
   timezone     String        @default("Asia/Karachi")
-  primaryColor String        @default("#f59e0b") // Customizable brand color
+  primaryColor String        @default("#f59e0b")
   logoUrl      String?
   menuItems    MenuItem[]
   customers    Customer[]
@@ -64,23 +64,24 @@ model Rider {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  tenantId     String
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customerId   String
-  customer     Customer    @relation(fields: [customerId], references: [id])
-  customerName String
-  phone        String
-  address      String
-  items        String[]
-  total        Float
-  status       OrderStatus @default(NEW)
-  riderLat    Float?
-  riderLng    Float?
-  riderId      String?
-  rider        Rider?      @relation(fields: [riderId], references: [id])
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id               String      @id @default(uuid())
+  tenantId         String
+  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer    @relation(fields: [customerId], references: [id])
+  customerName     String
+  phone            String
+  address          String
+  items            String[]
+  total            Float
+  status           OrderStatus @default(NEW)
+  riderLat         Float?
+  riderLng         Float?
+  riderLastUpdated DateTime?   // Added timestamp tracking for rider updates
+  riderId          String?
+  rider            Rider?      @relation(fields: [riderId], references: [id])
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 }
 
 model ChatMessage {

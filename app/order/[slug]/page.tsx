@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useParams } from "next/navigation";
-import dynamic from "next/dynamic";
+import dynamicLoader from "next/dynamic";
 import { 
   ShoppingBag, 
   MapPin, 
@@ -12,12 +12,11 @@ import {
   UtensilsCrossed, 
   Plus, 
   Minus, 
-  ArrowRight,
-  Sparkles
+  ArrowRight
 } from "lucide-react";
 
 // Dynamically import Leaflet MapPicker to prevent SSR window reference crashes
-const MapPicker = dynamic(() => import("@/components/MapPicker"), { ssr: false });
+const MapPicker = dynamicLoader(() => import("@/components/MapPicker"), { ssr: false });
 
 interface MenuItem {
   id: string;
@@ -35,7 +34,7 @@ interface Tenant {
   primaryColor: string;
 }
 
-export default function StorefrontPage() {
+function StorefrontContent() {
   const params = useParams();
   const slug = (params?.slug as string) || "daal-chaawal";
 
@@ -50,8 +49,8 @@ export default function StorefrontPage() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressText, setAddressText] = useState("");
- const [lat, setLat] = useState<number>(33.6844);
-const [lng, setLng] = useState<number>(73.0479);
+  const [lat, setLat] = useState<number>(33.6844);
+  const [lng, setLng] = useState<number>(73.0479);
 
   const [submitting, setSubmitting] = useState(false);
   const [orderPlaced, setOrderPlaced] = useState(false);
@@ -62,12 +61,10 @@ const [lng, setLng] = useState<number>(73.0479);
     async function fetchTenantMenu() {
       try {
         setLoading(true);
-        // Using your webhook endpoint which returns tenant info and menu items
         const res = await fetch(`/api/webhook/${slug}`);
         const data = await res.json();
         if (data.success) {
           if (data.tenant) setTenant(data.tenant);
-          // Fallback static menu if seed doesn't return full menu items array directly
           if (data.menu) {
             setMenu(data.menu);
           } else {
@@ -126,7 +123,6 @@ const [lng, setLng] = useState<number>(73.0479);
 
     try {
       setSubmitting(true);
-      // Format items array from cart state
       const itemsList = Object.entries(cart).map(([itemId, qty]) => {
         const item = menu.find((m) => m.id === itemId);
         return `${qty}x ${item ? item.name : itemId}`;
@@ -377,5 +373,13 @@ const [lng, setLng] = useState<number>(73.0479);
 
       </main>
     </div>
+  );
+}
+
+export default function StorefrontPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#FDFBF7] flex items-center justify-center font-bold text-[#5C3A21]">Loading Storefront...</div>}>
+      <StorefrontContent />
+    </Suspense>
   );
 }
