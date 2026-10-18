@@ -75,9 +75,11 @@ model Order {
   items            String[]
   total            Float
   status           OrderStatus @default(NEW)
-  riderLat         Float?
-  riderLng         Float?
-  riderLastUpdated DateTime?   // Added timestamp tracking for rider updates
+  lat              Float?      // Customer delivery latitude pin
+  lng              Float?      // Customer delivery longitude pin
+  riderLat         Float?      // Live rider latitude
+  riderLng         Float?      // Live rider longitude
+  riderLastUpdated DateTime?   // Timestamp tracking for rider updates
   riderId          String?
   rider            Rider?      @relation(fields: [riderId], references: [id])
   createdAt        DateTime    @default(now())

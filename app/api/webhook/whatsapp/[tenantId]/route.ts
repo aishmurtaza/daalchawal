@@ -6,6 +6,89 @@ interface RouteContext {
   params: Promise<{ tenantId: string }>;
 }
 
+// Helper: Send text message back to customer on WhatsApp
+async function sendWhatsAppTextMessage(recipientPhone: string, messageText: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneId) {
+    console.log("WhatsApp credentials missing in .env. Skipping outbound text reply.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipientPhone,
+        type: "text",
+        text: {
+          body: messageText,
+        },
+      }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("Failed to send outbound WhatsApp message:", data);
+    } else {
+      console.log("Outbound WhatsApp message sent successfully:", data);
+    }
+  } catch (err) {
+    console.error("Error dispatching outbound WhatsApp message:", err);
+  }
+}
+
+// Helper: Send WhatsApp Kitchen Alert with interactive buttons & map link
+async function sendWhatsAppKitchenAlert(chefPhone: string, order: { id: string; customerName: string; phone: string; address: string; items: string[]; total: number; lat?: number | null; lng?: number | null }) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneId) {
+    console.log("WhatsApp credentials missing in .env. Skipping WhatsApp alert.");
+    return;
+  }
+
+  const orderShortId = order.id.slice(0, 6);
+  const mapLink = order.lat && order.lng ? `https://www.google.com/maps/search/?api=1&query=${order.lat},${order.lng}` : null;
+  const addressText = mapLink ? `${order.address}\n🗺️ *Open Map:* ${mapLink}` : order.address;
+
+  try {
+    await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: chefPhone,
+        type: "interactive",
+        interactive: {
+          type: "button",
+          body: {
+            text: `🔔 *WHATSAPP ORDER ALERT!* (#${orderShortId})\n\n👤 *Customer:* ${order.customerName} (${order.phone})\n📍 *Address:* ${addressText}\n\n🛒 *Items:* ${order.items.join(", ")}\n💰 *Total:* PKR ${order.total}\n\nTap below to start cooking:`
+          },
+          action: {
+            buttons: [
+              { type: "reply", reply: { id: `cook_${order.id}`, title: "🍳 Start Cooking" } },
+              { type: "reply", reply: { id: `cancel_${order.id}`, title: "❌ Cancel" } }
+            ]
+          }
+        }
+      }),
+    });
+  } catch (err) {
+    console.error("Error sending WhatsApp kitchen alert:", err);
+  }
+}
+
 // GET: Meta WhatsApp Cloud API Webhook Verification Challenge
 export async function GET(request: Request, context: RouteContext) {
   try {
@@ -33,41 +116,27 @@ export async function GET(request: Request, context: RouteContext) {
   }
 }
 
-// POST: Receives incoming Meta WhatsApp messages, interactive button clicks, and handles AI chat
+// POST: Receives incoming Meta WhatsApp messages, interactive button clicks, and handles AI chat & order recording
 export async function POST(request: Request, context: RouteContext) {
   try {
     const { tenantId } = await context.params;
     const body = await request.json();
 
-    console.log("📥 INBOUND WHATSAPP WEBHOOK RECEIVED:", JSON.stringify(body, null, 2));
-
-    // Parse Meta WhatsApp Cloud API payload structure
     const entry = body.entry?.[0];
     const change = entry?.changes?.[0];
     const value = change?.value;
     const messageObj = value?.messages?.[0];
 
-    // 1. Handle Chef Interactive Button Taps First (e.g., "🍳 Start Cooking")
+    // 1. Handle Chef Interactive Button Taps First
     if (messageObj && messageObj.type === "interactive" && messageObj.interactive?.type === "button_reply") {
-      const buttonId = messageObj.interactive.button_reply.id; // e.g. "cook_<orderId>"
-      console.log("🔘 Button reply clicked by chef:", buttonId);
-
+      const buttonId = messageObj.interactive.button_reply.id; 
       if (buttonId.startsWith("cook_")) {
         const orderId = buttonId.replace("cook_", "");
-        const updatedOrder = await prisma.order.update({
-          where: { id: orderId },
-          data: { status: "PREPARING" },
-        });
-        console.log(`✅ Order ${orderId} successfully moved to PREPARING via WhatsApp button!`, updatedOrder);
+        await prisma.order.update({ where: { id: orderId }, data: { status: "PREPARING" } });
       } else if (buttonId.startsWith("cancel_")) {
         const orderId = buttonId.replace("cancel_", "");
-        const cancelledOrder = await prisma.order.update({
-          where: { id: orderId },
-          data: { status: "CANCELLED" },
-        });
-        console.log(`❌ Order ${orderId} marked as CANCELLED via WhatsApp button!`, cancelledOrder);
+        await prisma.order.update({ where: { id: orderId }, data: { status: "CANCELLED" } });
       }
-
       return NextResponse.json({ success: true, message: "Button action handled successfully" }, { status: 200 });
     }
 
@@ -92,130 +161,73 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     if (!userText || !phone) {
-      return NextResponse.json({
-        success: true,
-        message: "No readable text message or phone found in payload (status update, ack, or media)",
-      });
+      return NextResponse.json({ success: true, message: "No readable text message or phone found" });
     }
 
     // 3. Fetch tenant and available menu context
     let tenant = await prisma.tenant.findFirst({
-      where: {
-        OR: [{ id: tenantId }, { slug: tenantId }],
-      },
-      include: {
-        menuItems: {
-          where: { available: true },
-        },
-      },
+      where: { OR: [{ id: tenantId }, { slug: tenantId }] },
+      include: { menuItems: { where: { available: true } } },
     });
 
     if (!tenant) {
-      tenant = await prisma.tenant.create({
-        data: {
-          id: tenantId,
-          businessName: "Daal Chaawal Express",
-          slug: tenantId === "daal-chaawal-tenant-id" ? "daal-chaawal" : tenantId,
-          currency: "PKR",
-          timezone: "Asia/Karachi",
-          primaryColor: "#f59e0b",
-          menuItems: {
-            create: [
-              {
-                name: "Special Chicken Daal Chawal",
-                description: "Slow-cooked yellow lentil daal with fragrant basmati rice & chicken shami kabab",
-                price: 450,
-                category: "Main Course",
-                available: true,
-              },
-              {
-                name: "Desi Ghee Daal Fry Plate",
-                description: "Pure desi ghee garlic tadka mash daal served with crispy zeera rice",
-                price: 350,
-                category: "Main Course",
-                available: true,
-              },
-              {
-                name: "Karachi Chicken Biryani",
-                description: "Authentic spicy karachi dum biryani with marinated chicken pieces",
-                price: 500,
-                category: "Main Course",
-                available: true,
-              },
-              {
-                name: "Mint Lemon Margarita",
-                description: "Chilled fresh mint leaves blended with lemon juice & soda",
-                price: 200,
-                category: "Beverages",
-                available: true,
-              },
-            ],
-          },
-        },
-        include: {
-          menuItems: {
-            where: { available: true },
-          },
-        },
-      });
+      return NextResponse.json({ success: false, error: "Tenant not found" }, { status: 404 });
     }
 
     // 4. Find or create customer record
     const customer = await prisma.customer.upsert({
-      where: {
-        tenantId_phone: {
-          tenantId: tenant.id,
-          phone: phone,
-        },
-      },
-      update: {
-        name: customerName !== "WhatsApp Customer" ? customerName : undefined,
-      },
-      create: {
-        tenantId: tenant.id,
-        phone: phone,
-        name: customerName,
-      },
+      where: { tenantId_phone: { tenantId: tenant.id, phone: phone } },
+      update: { name: customerName !== "WhatsApp Customer" ? customerName : undefined },
+      create: { tenantId: tenant.id, phone: phone, name: customerName },
     });
 
     // 5. Save incoming customer message to ChatMessage log
     await prisma.chatMessage.create({
-      data: {
-        tenantId: tenant.id,
-        customerId: customer.id,
-        role: "user",
-        content: userText,
-      },
+      data: { tenantId: tenant.id, customerId: customer.id, role: "user", content: userText },
     });
 
-    // 6. Build dynamic menu context & prompt for Gemini AI (Explicit typing on m: any)
+    const chatHistory = await prisma.chatMessage.findMany({
+      where: { tenantId: tenant.id, customerId: customer.id },
+      orderBy: { createdAt: "asc" },
+      take: 10,
+    });
+
+    // 6. Build dynamic menu context & JSON-structured prompt for Gemini AI
     const menuSummary = tenant.menuItems
-      .map(
-        (m: { name: string; price: number; category: string; description: string | null }) =>
-          `• ${m.name}\n${tenant.currency} ${m.price} [${m.category}]: ${m.description || "Freshly cooked"}`
+      .map((m: { name: string; price: number; category: string; description: string | null }) => 
+        `• ${m.name} - ${tenant.currency} ${m.price} [${m.category}]: ${m.description || "Freshly cooked"}`
       )
       .join("\n");
 
-    const systemPrompt = `You are the friendly, fast, and polite AI Ordering Manager for "${tenant.businessName}".
-Your mission is to take customer food orders, answer questions about the menu, delivery, and pricing, and guide them to order.
-
-Restaurant Context:
-- Currency: ${tenant.currency}
-- Menu Items:
+    const systemPrompt = `You are the friendly AI ordering manager for "${tenant.businessName}". 
+Here is the live menu:
 ${menuSummary}
 
-Language & Tone Guidelines:
-- Match the customer's language. If they write in Roman Urdu (e.g., "Salam, kya hal hai", "bhai daal chawal kitne ka hai"), reply in warm, natural, respectful Roman Urdu.
-- If they write in English, reply in courteous English.
-- Always be helpful, appetizing, and brief (WhatsApp users prefer concise replies).
-- When the customer confirms what they want, ask politely for their delivery address and name if not already provided.
-- Never invent menu items that are not on the list.
+Conversation History:
+${chatHistory.map(h => `${h.role}:${h.content}`).join("\n")}
 
-Customer Name: ${customer.name || "Customer"}
-Customer Phone: ${customer.phone}
-Customer said: "${userText}"`;
+User's latest message: "${userText}"
 
-    let aiReply = "";
+Your tasks:
+1. Reply naturally in friendly Roman Urdu or English to assist the customer with menu items, prices, or recommendations.
+2. Determine if the customer has CONFIRMED an order (i.e., they selected items and provided a delivery address).
+3. Output your response strictly in valid JSON format with this exact structure:
+{
+  "replyMessage": "Your chat reply to the customer here",
+  "isOrderConfirmed": true/false,
+  "orderData": {
+    "items": ["1x Special Chicken Daal Chawal"],
+    "address": "Customer delivery address",
+    "total": 450
+  }
+}
+If the order is not yet confirmed, set "isOrderConfirmed": false and "orderData": null. Do not include markdown backticks around the json, output raw JSON or standard JSON block.`;
+
+    let parsedData: { replyMessage: string; isOrderConfirmed: boolean; orderData?: { items: string[]; address: string; total: number } | null } = {
+      replyMessage: "",
+      isOrderConfirmed: false,
+      orderData: null,
+    };
 
     // 7. Invoke Google Gemini Flash
     if (process.env.GEMINI_API_KEY) {
@@ -226,51 +238,68 @@ Customer said: "${userText}"`;
           contents: systemPrompt,
         });
 
-        aiReply = response.text || "";
+        const rawText = response.text || "{}";
+        const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+        parsedData = JSON.parse(cleanJson);
       } catch (geminiError) {
-        console.warn("Gemini API call failed, using intelligent fallback:", geminiError);
+        console.warn("Gemini API call or JSON parsing failed:", geminiError);
       }
     }
 
-    // Intelligent fallback if Gemini API key is missing or quota/network error occurs
-    if (!aiReply) {
-      const lower = userText.toLowerCase();
-      if (lower.includes("salam") || lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
-        aiReply = `Walaikum Assalam! ${tenant.businessName} mein khushamdeed! Aaj hamare paas taza Special Chicken Daal Chawal (PKR 450), Desi Ghee Daal Fry (PKR 350) aur Karachi Chicken Biryani (PKR 500) tayar hain. Batayen aap ke liye kya pack karwayen?`;
-      } else if (lower.includes("price") || lower.includes("rate") || lower.includes("kitn") || lower.includes("menu")) {
-        aiReply = `Hamara taza menu aur prices:\n${tenant.menuItems.map((m: { name: string; price: number }) => `• ${m.name}: ${tenant.currency}${m.price}`).join("\n")}\nAap kitni plates order karna chahtay hain?`;
-      } else if (lower.includes("order") || lower.includes("chahiye") || lower.includes("bhejo") || lower.includes("bhej do") || lower.includes("pack")) {
-        aiReply = `Zabardast! Aap ka order note kar rahe hain. Barah-e-karam apna Delivery Address aur contact confirm farma dein taake hum kitchen ko order forward karein.`;
-      } else {
-        aiReply = `Jee bilkul! ${tenant.businessName} aap ki khidmat mein hazir hai. Hum taza aur khalis desi khaney deliver kartay hain. Batayen aap kya order karna chahte hain?`;
-      }
+    if (!parsedData.replyMessage) {
+      parsedData.replyMessage = `Jee bilkul! Batayen aap kya order karna chahtay hain?`;
     }
 
     // 8. Save assistant reply to ChatMessage log
-    const savedAssistantMsg = await prisma.chatMessage.create({
-      data: {
-        tenantId: tenant.id,
-        customerId: customer.id,
-        role: "assistant",
-        content: aiReply,
-      },
+    await prisma.chatMessage.create({
+      data: { tenantId: tenant.id, customerId: customer.id, role: "assistant", content: parsedData.replyMessage },
     });
+
+    // 9. ⭐ SEND REPLY BACK TO CUSTOMER ON WHATSAPP ⭐
+    await sendWhatsAppTextMessage(phone, parsedData.replyMessage);
+
+    let createdOrder = null;
+
+    // 10. If Gemini detects the order is confirmed, record it to Prisma and trigger Kitchen Alert
+    if (parsedData.isOrderConfirmed && parsedData.orderData) {
+      const { items, address, total } = parsedData.orderData;
+
+      createdOrder = await prisma.order.create({
+        data: {
+          tenantId: tenant.id,
+          customerId: customer.id,
+          customerName: customerName,
+          phone: phone,
+          address: address || customer.address || "WhatsApp Order",
+          items: items || ["Special Chicken Daal Chawal"],
+          total: total || 450,
+          status: "NEW",
+        },
+      });
+
+      if (address) {
+        await prisma.customer.update({ where: { id: customer.id }, data: { address } });
+      }
+
+      const chefPhone = process.env.CHEF_WHATSAPP_PHONE || "923349440201";
+      await sendWhatsAppKitchenAlert(chefPhone, {
+        id: createdOrder.id,
+        customerName: createdOrder.customerName,
+        phone: createdOrder.phone,
+        address: createdOrder.address,
+        items: createdOrder.items,
+        total: createdOrder.total,
+      });
+    }
 
     return NextResponse.json({
       success: true,
-      reply: aiReply,
-      chatId: savedAssistantMsg.id,
-      customer: {
-        id: customer.id,
-        phone: customer.phone,
-        name: customer.name,
-      },
+      reply: parsedData.replyMessage,
+      orderConfirmed: parsedData.isOrderConfirmed,
+      orderId: createdOrder?.id || null,
     });
   } catch (error) {
     console.error("WhatsApp Webhook processing error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal server error processing WhatsApp message" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 });
   }
 }

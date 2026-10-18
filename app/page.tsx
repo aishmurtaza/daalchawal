@@ -36,6 +36,8 @@ interface Order {
   total: number;
   status: OrderStatus;
   createdAt: string;
+  lat?: number | null;
+  lng?: number | null;
   riderLat?: number | null;
   riderLng?: number | null;
   riderLastUpdated?: string | null;
@@ -461,10 +463,23 @@ export default function AutomationDashboard() {
                         </p>
                       </div>
 
-                      <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
-                        <span className="truncate">{order.address}</span>
-                      </p>
+                      {order.lat && order.lng ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${order.lat},${order.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-blue-600 hover:underline flex items-center gap-1.5 font-medium bg-blue-50/50 border border-blue-100 p-2 rounded-lg transition-colors"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="truncate">📍 {order.address} (Open Map)</span>
+                          <ExternalLink className="w-3 h-3 ml-auto shrink-0" />
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
+                          <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
+                          <span className="truncate">{order.address}</span>
+                        </p>
+                      )}
 
                       <div className="pt-2 flex items-center gap-2 border-t border-[#EFECE6]">
                         <button
@@ -527,10 +542,23 @@ export default function AutomationDashboard() {
                         </p>
                       </div>
 
-                      <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
-                        <span className="truncate">{order.address}</span>
-                      </p>
+                      {order.lat && order.lng ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${order.lat},${order.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-blue-600 hover:underline flex items-center gap-1.5 font-medium bg-blue-50/50 border border-blue-100 p-2 rounded-lg transition-colors"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="truncate">📍 {order.address} (Open Map)</span>
+                          <ExternalLink className="w-3 h-3 ml-auto shrink-0" />
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
+                          <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
+                          <span className="truncate">{order.address}</span>
+                        </p>
+                      )}
 
                       <div className="pt-2 border-t border-[#EFECE6]">
                         <button
@@ -585,12 +613,24 @@ export default function AutomationDashboard() {
                         </p>
                       </div>
 
-                      <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
-                        <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
-                        <span className="truncate">{order.address}</span>
-                      </p>
+                      {order.lat && order.lng ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${order.lat},${order.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-blue-600 hover:underline flex items-center gap-1.5 font-medium bg-blue-50/50 border border-blue-100 p-2 rounded-lg transition-colors"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="truncate">📍 {order.address} (Open Map)</span>
+                          <ExternalLink className="w-3 h-3 ml-auto shrink-0" />
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-[#7A6B5D] flex items-center gap-1.5">
+                          <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
+                          <span className="truncate">{order.address}</span>
+                        </p>
+                      )}
 
-                      {/* Live GPS Track Badge if Rider Location Broadcasted */}
                       {order.riderLat && order.riderLng ? (
                         <a
                           href={`https://maps.google.com/?q=${order.riderLat},${order.riderLng}`}
@@ -654,7 +694,25 @@ export default function AutomationDashboard() {
                         </span>
                       </div>
                       <p className="text-xs text-[#7A6B5D]">{order.items.join(", ")}</p>
-                      <span className="inline-flex items-center gap-1 text-[10px] text-[#388E3C] font-bold bg-[#388E3C]/10 px-2 py-0.5 rounded-full border border-[#388E3C]/20">
+                      
+                      {order.lat && order.lng ? (
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${order.lat},${order.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-blue-600 hover:underline flex items-center gap-1 font-medium mt-1"
+                        >
+                          <MapPin className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="truncate">{order.address}</span>
+                        </a>
+                      ) : (
+                        <p className="text-[10px] text-[#7A6B5D] flex items-center gap-1 mt-1">
+                          <MapPin className="w-3 h-3 text-[#A89F91] shrink-0" />
+                          <span className="truncate">{order.address}</span>
+                        </p>
+                      )}
+
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#388E3C] font-bold bg-[#388E3C]/10 px-2 py-0.5 rounded-full border border-[#388E3C]/20 mt-1">
                         <CheckCircle className="w-3 h-3" /> Delivered
                       </span>
                     </div>
@@ -758,7 +816,7 @@ export default function AutomationDashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black text-[#3A2A1D]">WhatsApp Conversational History</h2>
-                  <p className="text-xs text-[#7A6B5D]">Full logs of customer chats processed by Gemini 2.5 Flash</p>
+                  <p className="text-xs text-[#7A6B5D]">Full logs of customer chats processed by Gemini Flash</p>
                 </div>
                 <button
                   onClick={fetchData}
