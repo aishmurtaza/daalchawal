@@ -17,7 +17,7 @@ async function sendWhatsAppTextMessage(recipientPhone: string, messageText: stri
   }
 
   try {
-    const response = await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+    await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`,
@@ -28,20 +28,48 @@ async function sendWhatsAppTextMessage(recipientPhone: string, messageText: stri
         recipient_type: "individual",
         to: recipientPhone,
         type: "text",
-        text: {
-          body: messageText,
+        text: { body: messageText },
+      }),
+    });
+  } catch (err) {
+    console.error("Error dispatching outbound WhatsApp message:", err);
+  }
+}
+
+// Helper: Send menu image brochure back to customer on WhatsApp
+async function sendWhatsAppImageMessage(recipientPhone: string, captionText: string) {
+  const token = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+
+  if (!token || !phoneId) {
+    console.log("WhatsApp credentials missing in .env. Skipping image dispatch.");
+    return;
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "https://unabdicating-aweless-edwin.ngrok-free.dev");
+  const imageUrl = `${baseUrl}/daal-chaawal-express-menu.png`;
+
+  try {
+    await fetch(`https://graph.facebook.com/v17.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        recipient_type: "individual",
+        to: recipientPhone,
+        type: "image",
+        image: {
+          link: imageUrl,
+          caption: captionText,
         },
       }),
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      console.error("Failed to send outbound WhatsApp message:", data);
-    } else {
-      console.log("Outbound WhatsApp message sent successfully:", data);
-    }
   } catch (err) {
-    console.error("Error dispatching outbound WhatsApp message:", err);
+    console.error("Error dispatching WhatsApp image brochure:", err);
+    await sendWhatsAppTextMessage(recipientPhone, captionText);
   }
 }
 
@@ -164,14 +192,34 @@ export async function POST(request: Request, context: RouteContext) {
       return NextResponse.json({ success: true, message: "No readable text message or phone found" });
     }
 
-    // 3. Fetch tenant and available menu context
+    // 3. Fetch tenant and strictly synchronize exact website menu items
     let tenant = await prisma.tenant.findFirst({
       where: { OR: [{ id: tenantId }, { slug: tenantId }] },
       include: { menuItems: { where: { available: true } } },
     });
 
     if (!tenant) {
-      return NextResponse.json({ success: false, error: "Tenant not found" }, { status: 404 });
+      tenant = await prisma.tenant.create({
+        data: {
+          id: tenantId,
+          businessName: "Daal Chaawal Express",
+          slug: tenantId === "daal-chaawal-tenant-id" ? "daal-chaawal" : tenantId,
+          currency: "PKR",
+          timezone: "Asia/Karachi",
+          primaryColor: "#f59e0b",
+          menuItems: {
+            create: [
+              { name: "Daal Channa", description: "Split chickpea lentils slow-cooked, finished with garlic and cumin tarka in desi ghee", price: 370, category: "Main Course", available: true },
+              { name: "Daal Kaali Masar", description: "Whole masoor lentils with skin, deep and earthy, tempered with cumin and curry leaves", price: 350, category: "Main Course", available: true },
+              { name: "Daal Moong Masoor", description: "Yellow moong and red masoor cooked down soft and golden with mustard seed tarka", price: 350, category: "Main Course", available: true },
+              { name: "Sada Chaawal", description: "Aged basmati boiled and drained, long and separate grains", price: 140, category: "Main Course", available: true },
+              { name: "Single Thali Deal", description: "Any 1 Daal + Sada Chaawal + Free Aam ka Achaar & Fresh Salad", price: 440, category: "Deals", available: true },
+              { name: "Daftar Box", description: "5 Single Thalis with mix & match daals in packed boxes", price: 2050, category: "Deals", available: true },
+            ],
+          },
+        },
+        include: { menuItems: { where: { available: true } } },
+      });
     }
 
     // 4. Find or create customer record
@@ -192,62 +240,89 @@ export async function POST(request: Request, context: RouteContext) {
       take: 10,
     });
 
-    // 6. Build dynamic menu context & JSON-structured prompt for Gemini AI
+    // 6. Build dynamic menu context & Strict Human-Like System Prompt
     const menuSummary = tenant.menuItems
       .map((m: { name: string; price: number; category: string; description: string | null }) => 
         `• ${m.name} - ${tenant.currency} ${m.price} [${m.category}]: ${m.description || "Freshly cooked"}`
       )
       .join("\n");
 
-    const systemPrompt = `You are the friendly AI ordering manager for "${tenant.businessName}". 
-Here is the live menu:
-${menuSummary}
+    const systemPrompt = [
+      `You are a warm, casual, and friendly human restaurant manager / host for ${tenant.businessName}.`,
+      `Location: Bahria Town Phase 4, Islamabad. Timings: 12pm - 10pm.`,
+      `Minimum order Rs 300. Delivery Rs 100, free over Rs 1,500. Every thali includes free aam ka achaar and fresh salad.`,
+      `STRICT MENU (Do NOT invent or suggest anything else):`,
+      menuSummary,
+      `Conversation History:`,
+      chatHistory.map(h => `${h.role}: ${h.content}`).join("\n"),
+      `User's latest message: "${userText}"`,
+      `Behavioral Guidelines:`,
+      `- Talk like a real human friend/manager in natural Roman Urdu or English depending on how the user speaks. Never sound robotic or formal.`,
+      `- If the user asks for the menu, prices, or options: Set "sendMenuImage" to true and say something natural like "Yeh lein menu brochure! 🍛 Batayen kya pack karwayen?"`,
+      `- If the user gives their order and address: Acknowledge it warmly, calculate the total, set "isOrderConfirmed" to true, and give a friendly sign-off.`,
+      `- Output your response strictly in valid JSON format with this exact structure:`,
+      `{`,
+      `  "replyMessage": "Your warm human reply here",`,
+      `  "sendMenuImage": false,`,
+      `  "isOrderConfirmed": false,`,
+      `  "orderData": {`,
+      `    "items": ["1x Single Thali Deal (Daal Channa)"],`,
+      `    "address": "Customer address",`,
+      `    "total": 440`,
+      `  }`,
+      `}`,
+      `If the order is not yet confirmed, set "isOrderConfirmed" to false and "orderData" to null. Output raw JSON without markdown backticks.`
+    ].join("\n");
 
-Conversation History:
-${chatHistory.map(h => `${h.role}:${h.content}`).join("\n")}
-
-User's latest message: "${userText}"
-
-Your tasks:
-1. Reply naturally in friendly Roman Urdu or English to assist the customer with menu items, prices, or recommendations.
-2. Determine if the customer has CONFIRMED an order (i.e., they selected items and provided a delivery address).
-3. Output your response strictly in valid JSON format with this exact structure:
-{
-  "replyMessage": "Your chat reply to the customer here",
-  "isOrderConfirmed": true/false,
-  "orderData": {
-    "items": ["1x Special Chicken Daal Chawal"],
-    "address": "Customer delivery address",
-    "total": 450
-  }
-}
-If the order is not yet confirmed, set "isOrderConfirmed": false and "orderData": null. Do not include markdown backticks around the json, output raw JSON or standard JSON block.`;
-
-    let parsedData: { replyMessage: string; isOrderConfirmed: boolean; orderData?: { items: string[]; address: string; total: number } | null } = {
+    let parsedData: { replyMessage: string; sendMenuImage?: boolean; isOrderConfirmed: boolean; orderData?: { items: string[]; address: string; total: number } | null } = {
       replyMessage: "",
+      sendMenuImage: false,
       isOrderConfirmed: false,
       orderData: null,
     };
 
-    // 7. Invoke Google Gemini Flash
+    let geminiFailed = false;
+
+    // 7. Invoke Google Gemini Flash (using gemini-3.6-flash) with error handling
     if (process.env.GEMINI_API_KEY) {
       try {
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           contents: systemPrompt,
         });
 
         const rawText = response.text || "{}";
         const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
         parsedData = JSON.parse(cleanJson);
-      } catch (geminiError) {
-        console.warn("Gemini API call or JSON parsing failed:", geminiError);
+      } catch (geminiError: any) {
+        console.warn("Gemini API quota/error encountered, switching to smart fallback:", geminiError?.message || geminiError);
+        geminiFailed = true;
       }
+    } else {
+      geminiFailed = true;
     }
 
-    if (!parsedData.replyMessage) {
-      parsedData.replyMessage = `Jee bilkul! Batayen aap kya order karna chahtay hain?`;
+    // Intelligent Fallback Handler (Triggers automatically if Gemini quota is exhausted or missing)
+    if (geminiFailed || !parsedData.replyMessage) {
+      const lower = userText.toLowerCase();
+
+      if (lower.includes("menu") || lower.includes("price") || lower.includes("rate") || lower.includes("kya hai") || lower.includes("list")) {
+        parsedData.replyMessage = "Yeh lein menu brochure! 🍛 Batayen kya pack karwayen?";
+        parsedData.sendMenuImage = true;
+      } else if (lower.includes("order") || lower.includes("bhej do") || lower.includes("chahiye") || lower.includes("kardain")) {
+        parsedData.replyMessage = "Zabardast! Aap ka order note kar liya hai. Meherbani karke apna delivery address share kar dein taake garam garam khana dispatch karwayen! 🛵";
+        parsedData.isOrderConfirmed = true;
+        parsedData.orderData = {
+          items: [userText],
+          address: customer.address || "Pending Address",
+          total: 440
+        };
+      } else if (lower.includes("salam") || lower.includes("hello") || lower.includes("hi") || lower.includes("hey")) {
+        parsedData.replyMessage = `Walaikum Assalam! ${tenant.businessName} mein khushamdeed! Ghar jaisa taza daal chaawal tayar hai. Menu dekhne ke liye 'menu' likhein ya direct order batayen! 😊`;
+      } else {
+        parsedData.replyMessage = `Jee bilkul! Batayen ${tenant.businessName} se kya order karna pasand kareinge? Menu dekhne ke liye 'menu' type karein.`;
+      }
     }
 
     // 8. Save assistant reply to ChatMessage log
@@ -255,12 +330,16 @@ If the order is not yet confirmed, set "isOrderConfirmed": false and "orderData"
       data: { tenantId: tenant.id, customerId: customer.id, role: "assistant", content: parsedData.replyMessage },
     });
 
-    // 9. ⭐ SEND REPLY BACK TO CUSTOMER ON WHATSAPP ⭐
-    await sendWhatsAppTextMessage(phone, parsedData.replyMessage);
+    // 9. Send response back to customer on WhatsApp
+    if (parsedData.sendMenuImage) {
+      await sendWhatsAppImageMessage(phone, parsedData.replyMessage);
+    } else {
+      await sendWhatsAppTextMessage(phone, parsedData.replyMessage);
+    }
 
     let createdOrder = null;
 
-    // 10. If Gemini detects the order is confirmed, record it to Prisma and trigger Kitchen Alert
+    // 10. If order is confirmed, record to PostgreSQL and trigger Kitchen Alert
     if (parsedData.isOrderConfirmed && parsedData.orderData) {
       const { items, address, total } = parsedData.orderData;
 
@@ -271,8 +350,8 @@ If the order is not yet confirmed, set "isOrderConfirmed": false and "orderData"
           customerName: customerName,
           phone: phone,
           address: address || customer.address || "WhatsApp Order",
-          items: items || ["Special Chicken Daal Chawal"],
-          total: total || 450,
+          items: items || ["Single Thali Deal"],
+          total: total || 440,
           status: "NEW",
         },
       });
