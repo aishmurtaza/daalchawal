@@ -265,14 +265,7 @@ export default function AutomationDashboard() {
         )}
 
         <nav className="flex items-center space-x-1.5 bg-[#F4EFE6] p-1.5 rounded-2xl border border-[#E5DFD3]">
-          <button
-            onClick={() => setActiveTab("onboarding")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "onboarding" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
-            }`}
-          >
-            <Store className="w-4 h-4" /> Setup
-          </button>
+          
           <button
             onClick={() => setActiveTab("dashboard")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
@@ -294,113 +287,14 @@ export default function AutomationDashboard() {
           >
             <Users className="w-4 h-4" /> CRM Customers
           </button>
-          <button
-            onClick={() => setActiveTab("chats")}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === "chats" ? "bg-[#5C3A21] text-white shadow-md" : "text-[#7A6B5D] hover:text-[#3A2A1D] hover:bg-[#EFECE6]"
-            }`}
-          >
-            <MessageSquare className="w-4 h-4" /> AI Chat Logs
-          </button>
+          
         </nav>
       </header>
 
       {/* Main Content Area */}
       <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
 
-        {/* 1. SETUP TAB */}
-        {activeTab === "onboarding" && (
-          <div className="space-y-6">
-            <div className="bg-gradient-to-r from-[#F4EFE6] via-[#FAF6ED] to-[#FDFBF7] border border-[#E5DFD3] rounded-3xl p-6 sm:p-8 shadow-xl">
-              <span className="text-[#8C4A28] font-bold text-xs tracking-wider uppercase bg-[#E6A15C]/15 px-3 py-1 rounded-full border border-[#E6A15C]/30">
-                Kitchen Gadget Audio System
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-black mt-3 text-[#3A2A1D] tracking-tight">
-                WhatsApp & Storefront Integration Hub
-              </h2>
-              <p className="text-[#7A6B5D] mt-2 max-w-2xl text-xs sm:text-sm leading-relaxed">
-                Whenever a customer places an order on your storefront or via WhatsApp, this kitchen screen chimes instantly and puts the order into Column 1.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white border border-[#E5DFD3] rounded-3xl p-6 shadow-md space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="p-2 bg-[#25D366]/10 border border-[#25D366]/30 rounded-xl text-[#25D366]">
-                      <Phone className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-[#3A2A1D]">Meta WhatsApp Cloud API Webhook</h3>
-                      <p className="text-[11px] text-[#7A6B5D]">Handles incoming customer chats & AI bot replies</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-[#25D366]/15 text-[#128C7E] border border-[#25D366]/30">
-                    Active
-                  </span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] text-[#7A6B5D] font-semibold block">Webhook Callback URL</label>
-                  <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#8C4A28]">
-                    <span className="truncate flex-1">{whatsappWebhookUrl}</span>
-                    <button onClick={() => copyToClipboard(whatsappWebhookUrl, "wa-url")} className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]">
-                      {copiedKey === "wa-url" ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] text-[#7A6B5D] font-semibold block">Verification Token</label>
-                  <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#3A2A1D]">
-                    <span className="truncate flex-1">daalchaawal_secret</span>
-                    <button onClick={() => copyToClipboard("daalchaawal_secret", "wa-token")} className="p-1 hover:text-[#3A2A1D] text-[#7A6B5D]">
-                      {copiedKey === "wa-token" ? <CheckCircle className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#E5DFD3] rounded-3xl p-6 shadow-md space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <div className="p-2 bg-[#E6A15C]/15 border border-[#E6A15C]/30 rounded-xl text-[#8C4A28]">
-                      <ShoppingBag className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm text-[#3A2A1D]">Online Storefront & Webhook</h3>
-                      <p className="text-[11px] text-[#7A6B5D]">Hosted dynamic menu & checkout portal</p>
-                    </div>
-                  </div>
-                  <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-[#E6A15C]/15 text-[#8C4A28] border border-[#E6A15C]/30">
-                    Live
-                  </span>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-[11px] text-[#7A6B5D] font-semibold block">Customer Direct Ordering URL</label>
-                  <div className="flex items-center gap-2 bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-2.5 text-xs font-mono text-[#3A2A1D]">
-                    <span className="truncate flex-1">{storefrontUrl}</span>
-                    <a href="/order/daal-chaawal" target="_blank" rel="noopener noreferrer" className="p-1 hover:text-[#8C4A28] text-[#7A6B5D]">
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex justify-end">
-                  <a
-                    href="/order/daal-chaawal"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-[#5C3A21] hover:bg-[#3A2A1D] text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all shadow-md"
-                  >
-                    Open Live Storefront <ExternalLink className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+       
 
         {/* 2. KITCHEN ORDERS KANBAN BOARD */}
         {activeTab === "dashboard" && (
@@ -809,131 +703,7 @@ export default function AutomationDashboard() {
           </div>
         )}
 
-        {/* 4. AI CHAT LOGS TAB */}
-        {activeTab === "chats" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-black text-[#3A2A1D]">WhatsApp Conversational History</h2>
-                  <p className="text-xs text-[#7A6B5D]">Full logs of customer chats processed by Gemini Flash</p>
-                </div>
-                <button
-                  onClick={fetchData}
-                  className="bg-white border border-[#E5DFD3] text-[#4A3B32] hover:text-[#3A2A1D] px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-[#F4EFE6] transition-all shadow-sm"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} /> Refresh
-                </button>
-              </div>
-
-              <div className="bg-white/80 border border-[#E5DFD3] rounded-2xl p-4 sm:p-6 space-y-4 max-h-[650px] overflow-y-auto shadow-sm">
-                {chats.map((chat) => (
-                  <div
-                    key={chat.id}
-                    className={`p-4 rounded-2xl border text-xs sm:text-sm max-w-xl transition-all ${
-                      chat.role === "user" ? "bg-[#F9F7F2] border-[#E5DFD3] ml-auto shadow-sm" : "bg-[#E6A15C]/15 border-[#E6A15C]/30 mr-auto shadow-sm"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-4 text-[11px] text-[#7A6B5D] mb-1.5">
-                      <span className="font-bold flex items-center gap-1 text-[#3A2A1D]">
-                        {chat.role === "user" ? (
-                          <>
-                            <Phone className="w-3 h-3 text-[#A89F91]" />
-                            {chat.customer?.name || chat.customer?.phone || "Customer"}
-                          </>
-                        ) : (
-                          <span className="text-[#8C4A28] flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" /> AI WhatsApp Agent
-                          </span>
-                        )}
-                      </span>
-                      <span className="font-mono text-[10px]">
-                        {new Date(chat.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
-                    <p className="text-[#4A3B32] whitespace-pre-wrap leading-relaxed">
-                      {chat.content}
-                    </p>
-                  </div>
-                ))}
-
-                {chats.length === 0 && (
-                  <div className="py-20 text-center space-y-3">
-                    <MessageSquare className="w-10 h-10 text-[#A89F91] mx-auto" />
-                    <p className="text-xs text-[#7A6B5D] italic">No WhatsApp conversations recorded yet.</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Simulator Col */}
-            <div className="space-y-4">
-              <div className="bg-white border border-[#E5DFD3] rounded-2xl p-5 shadow-md space-y-4 sticky top-24">
-                <div className="flex items-center space-x-2 pb-3 border-b border-[#EFECE6]">
-                  <div className="p-1.5 rounded-lg bg-[#25D366]/15 border border-[#25D366]/30 text-[#128C7E]">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm text-[#3A2A1D]">AI Agent Live Simulator</h3>
-                    <p className="text-[11px] text-[#7A6B5D]">Test Roman Urdu & English food ordering</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSimulateWhatsApp} className="space-y-3">
-                  <div>
-                    <label className="text-[11px] text-[#7A6B5D] font-semibold block mb-1">Customer Name</label>
-                    <input
-                      type="text"
-                      value={simName}
-                      onChange={(e) => setSimName(e.target.value)}
-                      className="w-full bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl px-3 py-2 text-xs text-[#3A2A1D] focus:outline-none focus:border-[#8C4A28]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-[#7A6B5D] font-semibold block mb-1">WhatsApp Phone Number</label>
-                    <input
-                      type="text"
-                      value={simPhone}
-                      onChange={(e) => setSimPhone(e.target.value)}
-                      className="w-full bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl px-3 py-2 text-xs text-[#3A2A1D] font-mono focus:outline-none focus:border-[#8C4A28]"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-[11px] text-[#7A6B5D] font-semibold block mb-1">Incoming Message (Roman Urdu / English)</label>
-                    <textarea
-                      rows={3}
-                      value={simMessage}
-                      onChange={(e) => setSimMessage(e.target.value)}
-                      placeholder="e.g. Salam, 2 plate chicken daal chawal pack kar dein gulshan bhejna hai"
-                      className="w-full bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl px-3 py-2 text-xs text-[#3A2A1D] placeholder-[#A89F91] focus:outline-none focus:border-[#8C4A28] resize-none"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={simLoading}
-                    className="w-full bg-[#25D366] hover:bg-[#20ba5a] text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-60"
-                  >
-                    {simLoading ? "Thinking with Gemini..." : <><Send className="w-3.5 h-3.5" /> Simulate Incoming WhatsApp</>}
-                  </button>
-                </form>
-
-                {simReply && (
-                  <div className="pt-3 border-t border-[#EFECE6] space-y-1.5">
-                    <span className="text-[10px] uppercase font-bold text-[#8C4A28] flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> AI Generated Reply:
-                    </span>
-                    <div className="bg-[#F9F7F2] border border-[#E5DFD3] rounded-xl p-3 text-xs text-[#3A2A1D] whitespace-pre-wrap leading-relaxed">
-                      {simReply}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        
 
       </main>
     </div>
